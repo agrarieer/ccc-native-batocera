@@ -1,0 +1,51 @@
+# Installer/application contract — final runtime interface
+
+## Parent runtime preparation (FINAL)
+
+Required: `payload/runtime.tar.gz` and `payload/runtime-manifest.json` with JSON object `{"sha256":"<64 lowercase hex>","bytes":123,"format":"tar.gz","architecture":"x86_64"}`. Bytes is the exact compressed archive size. Extra metadata is allowed. Runtime archive members are `python/...` and `lib/...`, without a runtime/ prefix. The installer extracts into ROOT/runtime. **payload/SHA256SUMS is now optional**; if present it must cover all app files plus payload/runtime.tar.gz (package-relative paths) exactly. If absent, JSON still verifies runtime and app code inherits trusted installer-release provenance; it is hashed before/after copying. This supersedes the earlier mandatory-SHA256SUMS requirement below.
+
+Parent wrapper may download pinned official dependencies before a real install, but MUST NOT bootstrap, download or write for check/--check/--dry-run.
+
+## Caller-supplied mapping (FINAL; supersedes parent-owned mapping below)
+
+Every install/pre-install check requires `--mapping-source /path/to/your/register_vpcom.py` in addition to `--source`, `--table`, and `--script`. The only accepted input is exactly 31411 bytes, SHA256 `d69cc40d4a4b3131f900c7021b26f02525f9f90c20569e50c4188c2a5cda5871`. No automatic discovery/download or CLI hash override is provided. Checking an existing installation needs no original input.
+
+`installer/mapping.py` reads bounded bytes once, verifies the exact SHA, and parses only eight selected method bodies with the standard-library AST. It mechanically ports Python 2 integer division, dictionary membership, and instance pinproc access, and removes COM health checks. A new native wrapper exposes `CCCWPCMapping(game, pinproc, lifecycle)`, `request`, `set_switch`, and `outputs`, constrained to WPC95/non-System11. The original COM imports, logging, registry, threads, Run/Stop and game loading are excluded. **Neither the input nor generated code is executed/imported during check/install.** Preflight generates bytes in memory without writing; install writes those same bytes, avoiding a second unverified source read.
+
+The private generated `ROOT/app/ccc_wpc_mapping.py` is compatible with the existing `app/runtime_main.py` import; no application edit is required. `ROOT/mapping-manifest.json` records source size/SHA, generator/version, generated SHA, output path and `redistributable: false`; both files are covered by ownership/integrity/uninstall tracking, and provenance is repeated in the ownership marker.
+
+**Public package exclusion is mandatory:** do not include `app/ccc_wpc_mapping.py`, `register_vpcom.py`, generated mapping manifests/modules, mapping bytecode/caches, or private installed-root archives in any release. A private working-tree mapping may remain for comparison only. The installer never copies that private module: package app enumeration ignores it and bytecode/cache files, and install generates a replacement solely from caller input. Release SHA256SUMS must omit those excluded files (a stale manifest listing a private mapping fails closed). The public packager must independently enforce the exclusion; installer filtering is not a license grant or a substitute for release auditing. The generator itself contains only extraction/transformation/orchestration, not the original numeric mapping bodies.
+
+Real-source tests: set `CCC_MAPPING_SOURCE` to the caller-owned source (the local development fallback is `C:/P-ROC/tools/register_vpcom.py`), then run `python -B -m unittest discover -s tests -v`. Without it, private-source gates explicitly skip; no private source fixture is shipped. Transaction tests use an explicitly labeled inert mapping fixture. Real-source tests verify generation/no-execution, dry-run/install/provenance, and compare all 0..127 switches and one-hot driver states against the private existing module when available. These are software gates, not a cabinet/gameplay qualification.
+
+## App interface (FINAL)
+
+Ports entry exports CCC_INSTALL_ROOT and executes `python3 -B "$CCC_INSTALL_ROOT/app/launch.py" --root "$CCC_INSTALL_ROOT" "$@"`.
+
+Native table builder invocation matches the current app implementation: `python3 -B STAGING/app/build_table.py ORIGINAL.vpx ORIGINAL.vbs STAGING/tables --install-root FINAL_ROOT`. This embeds FINAL_ROOT, never staging, in the patched VBS pointer. Builder is copied/verified app code, not user game code. Both outputs and build-manifest.json are retained and hashed. Tests inject a fixture-only builder, never claim native success.
+
+Settings schema 1: profile="desktop", audio=true, sound_enabled=true (compatibility alias updated together), audio_backend="auto", software_dmd=true, physical_dmd=false, dmd_host="127.0.0.1", dmd_port=6789, dmd_server=null (compatibility endpoint), volume=50, display={}, native_vpx=detected path, install_root=ROOT. Empty VPX.ini comment permits native defaults. This supersedes the earlier settings line below.
+
+Concurrency: installer uses sibling `.<root-name>.install-lock` and rejects mutation while ROOT/launch.lock exists. App should check the sibling installer lock before creating its launch lock. Stale locks are never automatically stolen.
+
+Source supports standard sounds/ and dmd/ or dots/ directories in addition to assets/sound and assets/dmd. Shared detection: explicit --shared, SOURCE/shared, sibling ../shared, then ../../shared. Shared copy is restricted to dmd/, config/ and vp_game_map.yaml, excluding personal-data names; it is copied to root/shared AND game/shared (original assets.py directly addresses game/shared/dmd). Copied game/config.yaml is regenerated with clean generic paths and USB updating/shutdown disabled; private cabinet positions/paths are not copied. Only this copied config is rewritten; original source and default templates are untouched. Platform glibc minimum is 2.35 (supersedes 2.38 below).
+
+All CLI output and documentation are English. Parent owns the full asset-reference audit and actual native application/live VPX gate.
+
+## Base interface details
+
+- CLI: `python3 installer/main.py {install,check,configure,uninstall}`. English JSON reports, nonzero errors. `install --source DIR --table FILE --script FILE [--shared DIR] [--userdata /userdata] [--root PATH] [--dry-run] [--skip-platform-check] [--dmd-server HOST:PORT] [--import-saves DIR]`. `check` uses the same source arguments for a preinstall check, or checks an existing owned root when omitted. Skip-platform is allowed only with check/dry-run and is explicitly NOT a supported-install verdict.
+- Package root contains parent-owned app/ and payload/. No tar symlinks/hardlinks/devices/absolute/traversal/duplicate paths; maximum 4 GiB expanded and 100000 members. Packager must dereference runtime symlinks. Installer never executes supplied Python game code during verification. No global ES/video changes or gamelist XML edits.
+- Root defaults `/userdata/system/ccc-native`, must be strictly below resolved userdata and cannot be userdata/roms or another protected parent. Layout: `app/`, `runtime/{python,lib}`, `game/`, `shared/`, `tables/{CCC-native.vpx,CCC-native.vbs}`, `config/{settings.json,VPX.ini}`, `saves/`, `runs/`; ownership `.ccc-install.json`. Existing foreign root is never overwritten. Updates keep config/saves and also runs; previous full root is retained as a sibling `.ccc-native.backup-<uuid>` (never automatically deleted).
+- App owns runtime audio/display discovery and save routing. Use saves/ for writable game_data/user_settings. Templates are retained so original game initialization creates clean defaults; installer never invents zero-valued score templates.
+- Source: game directory itself or parent containing cactuscanyon/. Require game.py/assets.py/config.yaml, config/cc_machine.yaml, config/game_data_template.yaml, config/settings_template.yaml and procgame/ep/cc_modes Python packages; nonempty sound and DMD trees. Original source is never modified. Personal game_data/user_settings/backups, caches, logs and dotfiles are excluded. Only explicit --import-saves imports game_data.yaml/user_settings.yaml to saves/. Parent app owns bridge mapping. No private runtime/library bundles are accepted from the game source.
+- Exact table SHA256 `542b775831a1876c37d46eb8a825e7027562f6bab648f4ee2e6b20db483353a8`; exact original script SHA256 `f20205c66d564b6bbc88f6b0ee7635f0e2fd6c9256b6255d6fa2065899618f7e`. Unsupported variants fail closed; no CLI hash override. Test policies injectable through Python API only.
+- Platform qualification is intentionally narrow: Linux x86_64 Batocera 43/43.1, glibc >= 2.35, native VPX executable available. Fixture tests inject a platform report and test hashes in Python, never pretend to qualify hardware. Runtime/application/live VPX validation remains parent's release gate.
+- Uninstall removes only unchanged manifested installer files and the exact owned launcher; changed/untracked files and config/saves/runs/backups are retained. Existing installation is checked for symlinks before mutation. Retained ownership marker records residual state and cannot be used for update until residual files are reviewed.
+- `configure` accepts `--sound on|off`, `--dmd-server HOST:PORT|off`; validates before atomic settings replacement. No credentials required or accepted.
+
+## Verification and recovery
+
+Run `python -B -m unittest discover -s tests -v`. Python-only injection hooks: Policy, platform_probe, table_builder(app,table,script,destination,final_root), commit_hook(stage_name); CLI never exposes hash/fake-platform overrides.
+
+Caught commit failures restore the previous installation/launcher. Power loss is not a database transaction: inspect retained sibling backups and stale locks before retrying. A trusted private installation directory is required; this is not protection against a concurrent privileged attacker replacing paths. Uninstall is conservative and nonrecursive outside its own staging tree. Review/move the retained inactive root before reinstalling. Checksums establish integrity, not publisher authenticity; obtain installer/manifest from a trusted source.

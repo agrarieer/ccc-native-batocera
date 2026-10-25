@@ -1,0 +1,243 @@
+{
+  "format": 1,
+  "status": "Fresh rebuild exact allowlist; historical audit remains unchanged",
+  "historical_allowlist_sha256": "3f09716c8794f539e7fe00dd3420ace89adcc8b33ba808eb3f4400fd0bb7bdd3",
+  "files": {
+    "pinproc.so": {
+      "size": 229264,
+      "sha256": "d9696ad623cc5d778b36850ef923601e31cc2e43504b9b6f1b932029c8c9e569"
+    },
+    "pygame/__init__.py": {
+      "size": 11582,
+      "sha256": "7a8c049033ff868c876c47645640e557577548eb12498c7bae6598b1e35688e4"
+    },
+    "pygame/_camera.so": {
+      "size": 113208,
+      "sha256": "fc26f8988812b87597f39ac59f887f0f3984c327cf468878b61320c1069e1a54"
+    },
+    "pygame/_camera_opencv_highgui.py": {
+      "size": 2230,
+      "sha256": "d01c5529135554a57a0dee058fb6e31d8eb166014f0fb0c6e375fcb09ed80bda"
+    },
+    "pygame/_camera_vidcapture.py": {
+      "size": 3739,
+      "sha256": "dcc495b1b18d8bb8d12d1f68e0cc242fb2aac337eb6f83d8e15a1b97f2038c85"
+    },
+    "pygame/_dummybackend.py": {
+      "size": 770,
+      "sha256": "708b7cf240613f382c7adf95909d43ddb1b5d29be55cb7afa6a460ac785b7aea"
+    },
+    "pygame/_freetype.so": {
+      "size": 277712,
+      "sha256": "4dc3ca4d199c73161e355b6ee0594243bf1740e25c0e9418d6e640165cbbac1f"
+    },
+    "pygame/_numpysndarray.py": {
+      "size": 2616,
+      "sha256": "e7c2081663a22866d84adf3288a486186ced72683768929c3e5aa108cbd36306"
+    },
+    "pygame/_numpysurfarray.py": {
+      "size": 12999,
+      "sha256": "3982294d8de60b3f3b735205f885e22eb4e67949832a7ae98f6abce2cb16e5dd"
+    },
+    "pygame/base.so": {
+      "size": 81584,
+      "sha256": "b4d9b98fcd4a5dfeb2cdddf692d904ce3927289ffec2bfbc512d669576914264"
+    },
+    "pygame/bufferproxy.so": {
+      "size": 53272,
+      "sha256": "af85b49b33d8fa691bb7655f3d94247326d9d685af5911aa6e7177d9e2f7359e"
+    },
+    "pygame/camera.py": {
+      "size": 2871,
+      "sha256": "628a77ffe21627315a26002ff8d88094b2a92e42bc82e0046e919585d43821d2"
+    },
+    "pygame/cdrom.so": {
+      "size": 51504,
+      "sha256": "0cec479850989e75efade61f86aa3f76079f379655d91dd54773e72bd28d4588"
+    },
+    "pygame/color.so": {
+      "size": 81008,
+      "sha256": "60aeafc79b6cdc163cfdc166ac9969847ff5ec99662bff640d60ca844728a09b"
+    },
+    "pygame/colordict.py": {
+      "size": 24175,
+      "sha256": "dd7bb9d13082c51762fae7bc569f5804642998a3acbf5ad4f5b3b17f7929911e"
+    },
+    "pygame/compat.py": {
+      "size": 3113,
+      "sha256": "c9b48dff81db356bc327aaae0939250f58404f3f0bc8dd1b21e473376c93a83f"
+    },
+    "pygame/constants.so": {
+      "size": 39488,
+      "sha256": "ff0b1a079494dbf231e802f49131d3729a89322b9c5c2778ba24f5aef9c395dd"
+    },
+    "pygame/cursors.py": {
+      "size": 10043,
+      "sha256": "85a32f678376902ac7ae6157635eb543fb43b7ccd568a156fc93638e2d779fed"
+    },
+    "pygame/display.so": {
+      "size": 77064,
+      "sha256": "772b18bd4b0b935341a65ade6865c8002ecc05ffb1be78ab0b039a7fdc8d58dc"
+    },
+    "pygame/draw.so": {
+      "size": 75728,
+      "sha256": "8446f6f58db47f91fc63c3bc776f4a557bde2c2c66d725f7494be8ca4cc3e910"
+    },
+    "pygame/draw_py.py": {
+      "size": 17943,
+      "sha256": "7d0a2832c3b6e7d2fe679e994c95e589ac725413ca2c452cac4b08aeb9850403"
+    },
+    "pygame/event.so": {
+      "size": 75176,
+      "sha256": "4beddc43e077ae0f2e6e08fdb23396fcc7a485729dc68c4b5fd82a23258d1831"
+    },
+    "pygame/fastevent.so": {
+      "size": 57648,
+      "sha256": "ac1de232facf6f8124a05813c3c13e7558dda742d0031a71e592d15713c07f95"
+    },
+    "pygame/font.so": {
+      "size": 59072,
+      "sha256": "d55d3ae15b50e95502a8b6f35518a09326c83a00fb5e63875b8d1dc749823f0f"
+    },
+    "pygame/freetype.py": {
+      "size": 1814,
+      "sha256": "8c83bc7ae18c842508ce94ec452650d01484c8b1a2036e08624ba27263805933"
+    },
+    "pygame/ftfont.py": {
+      "size": 6239,
+      "sha256": "bc7ce81aafa512cc0efc053d1b6ddbcec2a0ea6ea0f9d2735e8921b335b8cfe2"
+    },
+    "pygame/gfxdraw.so": {
+      "size": 175560,
+      "sha256": "a1080750c17a3ca9795ce623e5d376b850625a921eaffb95322e3713c056f08f"
+    },
+    "pygame/image.so": {
+      "size": 73912,
+      "sha256": "bdbeedf0d6ae5632e7966b801a7a62072cb889f1091474556e1911e1c531b3a6"
+    },
+    "pygame/imageext.so": {
+      "size": 66200,
+      "sha256": "ec1030e99ce6df4dbbaadf5770fe8e445cd879472161acb251350dd45b14f8d6"
+    },
+    "pygame/joystick.so": {
+      "size": 44968,
+      "sha256": "17c46091e84c793db3cf36e778c776d379066dc617684f2814c76ba14a08e331"
+    },
+    "pygame/key.so": {
+      "size": 35616,
+      "sha256": "5b011b0fd9487a883d82bf6c435eb4ee5c71f4d31a8d1e44d9eee1baf803cf2b"
+    },
+    "pygame/locals.py": {
+      "size": 1102,
+      "sha256": "f19bd6caa3aa16268f4f9cbbaeed3f3c7782a75e6efde70caa546a35a349fc0b"
+    },
+    "pygame/macosx.py": {
+      "size": 769,
+      "sha256": "1fd404cfc1da106fffebad0dcf69a77423e94072c48dfea336e945cbfdf14179"
+    },
+    "pygame/mask.so": {
+      "size": 107936,
+      "sha256": "86c4ade1ed0cadb9c71fd4bb8c6a293b90de583ed9829382fa89ac7969680838"
+    },
+    "pygame/math.so": {
+      "size": 139072,
+      "sha256": "5dee01c256326188a6134ca37800bd1ac55864229eb4f8212dfc2e74cc56d129"
+    },
+    "pygame/midi.py": {
+      "size": 23836,
+      "sha256": "7b30271d8436b331bda370bfd4dea4cb36b1f5f9e1cfa08a8aa964dbb768ae63"
+    },
+    "pygame/mixer.so": {
+      "size": 99352,
+      "sha256": "f3fae0e3e1df5fadd0bc039d0ea9cda026c48f2682308789c6a83a699cfd369c"
+    },
+    "pygame/mixer_music.so": {
+      "size": 53248,
+      "sha256": "e1351df8dc6b53cf390ae4de5bd5c03379c8d98ab54eee696a2218ff5854511e"
+    },
+    "pygame/mouse.so": {
+      "size": 36264,
+      "sha256": "538ff03226c2ea4b542a509b26816cdd851d55557b2350bf01e376de2e3cef8a"
+    },
+    "pygame/newbuffer.so": {
+      "size": 52992,
+      "sha256": "14589a36bc27178551436f4a009cbab4becd19d2d147178affff7c49e87263a6"
+    },
+    "pygame/overlay.so": {
+      "size": 32608,
+      "sha256": "8e8d79d490a6723014f25ec7d156c3c6efc1e163022f5617557d0ba3b229790e"
+    },
+    "pygame/pixelarray.so": {
+      "size": 113432,
+      "sha256": "ab8da150ea3a66da8ec52d7dd3fc27fd9db1f57ab8a860ea57bcbb2031cac396"
+    },
+    "pygame/pixelcopy.so": {
+      "size": 59536,
+      "sha256": "25ebd2d92120371d35cd9e8c333140f6de3c048d5e4959e03afc4191cba6d736"
+    },
+    "pygame/pkgdata.py": {
+      "size": 2264,
+      "sha256": "b0df3d7b0d906578c0c9cd70565a8d48e70f70ae33d1c032f599b0dbdaa41680"
+    },
+    "pygame/pypm.so": {
+      "size": 262544,
+      "sha256": "7be518b06ec4f59163d3b087dbd1a59d93ebe0bf4627fd4be066137d4749181f"
+    },
+    "pygame/rect.so": {
+      "size": 86992,
+      "sha256": "67b4175bb59cbdcec4f29502176abba100cc05bc2b5b3ed8b0e93da0400163c5"
+    },
+    "pygame/rwobject.so": {
+      "size": 45520,
+      "sha256": "5ad27c8e3a897e2a06f32a219f20feb7240bb240d26a02757426ef09c9536471"
+    },
+    "pygame/scrap.so": {
+      "size": 72840,
+      "sha256": "3d326eb17b5b534b47772ed565e529db3eb2f59abcf4f86105e34356c500f29c"
+    },
+    "pygame/sndarray.py": {
+      "size": 3413,
+      "sha256": "d339055b5e2f8f306403f169add7f0a16c6de1411ebb880e2e4597b4b8e4eec4"
+    },
+    "pygame/sprite.py": {
+      "size": 56082,
+      "sha256": "b7cfe46e03b5e453e3ac106203194a33563e9a5492bfcd61ff43b66ac2506033"
+    },
+    "pygame/surface.so": {
+      "size": 691680,
+      "sha256": "fc0d1add52d2c2f5ad092ef5d228d9cbb9037fd965e9552448af55024b11c641"
+    },
+    "pygame/surfarray.py": {
+      "size": 10257,
+      "sha256": "f050b496d4c9c46af1699d512d9dc71b2f1aa7bd9e3def7dfae49bfb3560e741"
+    },
+    "pygame/surflock.so": {
+      "size": 32224,
+      "sha256": "21d4f166fedf343f9def07f55e280077dc13ddb7bf186b4432ac8f1cf5b6ed46"
+    },
+    "pygame/sysfont.py": {
+      "size": 13581,
+      "sha256": "91f8073ba543bc3515ce3f2db0be2b79445b90a2b682ce11e078880e9905f6a7"
+    },
+    "pygame/threads/Py25Queue.py": {
+      "size": 7759,
+      "sha256": "a9d1dd9f276edbaa5f85dabb551183f23f1c14dd83758bb12265067732d6846d"
+    },
+    "pygame/threads/__init__.py": {
+      "size": 8709,
+      "sha256": "9f578aa5b632d0ac83995c545ca2e098f40bf9420997920df1ff151cfe7a0857"
+    },
+    "pygame/time.so": {
+      "size": 50264,
+      "sha256": "da5d7090451705bba01c763de5613f49d8a3b1aa209596824818a31b9b15da26"
+    },
+    "pygame/transform.so": {
+      "size": 135800,
+      "sha256": "3ec4d37159d6494f3a369a06887fdac5fe319b9fe55d47ff4655417d56ff7f3c"
+    },
+    "pygame/version.py": {
+      "size": 1920,
+      "sha256": "a7ada446485c8fc522fa8277dcf436751007c48c0b8554239fc415c055a0b8e6"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+name: Offline installer tests
+on: [push, pull_request, workflow_dispatch]
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Installer and mapping safety fixtures
+        run: python -B -m unittest discover -s tests -v
+      - name: Application supervision and output fixtures
+        run: python -B -m unittest discover -s app-tests -v
+      - name: Read-only entry-point policy
+        run: python -B -m unittest discover -s entry-tests -v
+      - name: Shell syntax
+        run: bash -n install.sh app/launch.sh
