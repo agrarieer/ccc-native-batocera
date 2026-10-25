@@ -2,7 +2,7 @@
 
 Native Linux bridge between Cactus Canyon Continued (CCCforVP) and Visual Pinball X. No Wine or Windows COM server is used.
 
-**Development candidate — not yet a qualified public release.** The original cabinet integration works, but a new recipient-assembled installation must pass its own runtime and player tests before a release is advertised as working.
+**Development candidate with native Batocera test evidence — not a universal compatibility guarantee.** The recipient-assembled runtime, real CCC backend, upright cabinet view, visible software DMD and native VPX exit have been exercised on Batocera 43.1 x86_64. See [exact tested scope and remaining gates](docs/VERIFICATION.md).
 
 ## Supported target
 
@@ -36,11 +36,21 @@ sh install.sh check
 
 The paths above are examples: supply your own authorized files. The original mapping source must have SHA256 `d69cc40d4a4b3131f900c7021b26f02525f9f90c20569e50c4188c2a5cda5871`. Its required methods are extracted locally without executing the supplied module during installation. The generated mapping stays in the recipient's private installation; do not redistribute it.
 
-A successful installation creates **Ports → Cactus Canyon Continued**. The public development package has not yet passed the fresh-overlay installed-game and visible-player gates; this is not a promise of drop-in compatibility for every Batocera system.
+A successful installation creates **Ports → Cactus Canyon Continued**. Start with software DMD and the machine's normal audio output. `xdotool` and `wmctrl` are required for the tested window/focus handling. Direct player/backend tests passed on the target described above; normal frontend discovery and complete gameplay/hardware coverage remain separate gates.
 
 `ccc.py` is the Python entry point; `install.sh` only locates it. A real install first checks the platform and prepares the private legacy runtime from pinned upstream downloads. `check`, `--dry-run` and `--check` never download dependencies or write files. When a local runtime has not yet been prepared, package validation may report the missing runtime; that is not a successful installability verdict.
 
 Supported operations: `install`, `check`, `configure`, `uninstall`. Installation owns only its private `/userdata/system/ccc-native` directory and its exact Ports launcher. Updates preserve saves/configuration and keep a previous-root backup. Uninstall preserves changed/untracked files and personal saves.
+
+## Portrait cabinet view
+
+For an already rotated portrait playfield, persist the cabinet camera without changing global display rotation:
+
+```sh
+sh install.sh configure --profile cabinet
+```
+
+Use `--profile cabinet` during installation to select it immediately. Updates preserve the selected profile. Return to the default desktop table view with `sh install.sh configure --profile desktop`. Cabinet view requires a detected portrait screen; it does not rotate the operating system display. A direct launcher `--profile` flag overrides the saved profile for that run only.
 
 ## Runtime and licenses
 

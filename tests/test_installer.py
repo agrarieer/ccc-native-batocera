@@ -96,6 +96,50 @@ class InstallerTests(unittest.TestCase):
         shutil.copyfile(table, destination / 'CCC-native.vpx')
         shutil.copyfile(script, destination / 'CCC-native.vbs')
 
+    def test_profile_install_configure_update_preserved(self):
+        self.install(profile='cabinet')
+        path = self.root / 'config/settings.json'
+        self.assertEqual(json.loads(path.read_text())['profile'], 'cabinet')
+        self.install()
+        self.assertEqual(json.loads(path.read_text())['profile'], 'cabinet')
+        before = path.read_bytes()
+        self.c.configure(self.userdata, profile='desktop', dry_run=True)
+        self.assertEqual(path.read_bytes(), before)
+        self.c.configure(self.userdata, profile='desktop')
+        self.assertEqual(json.loads(path.read_text())['profile'], 'desktop')
+        with self.assertRaises(self.c.InstallError):
+            self.c.configure(self.userdata, profile='rotated')
+        self.assertEqual(json.loads(path.read_text())['profile'], 'desktop')
+
+    def test_invalid_profile_never_installs(self):
+        with self.assertRaises(self.c.InstallError):
+            self.install(profile='rotated')
+        self.assertFalse(self.root.exists())
+
+    def test_dmd_configuration_matches_launcher_policy(self):
+        self.install()
+        path = self.root / 'config/settings.json'
+        before = path.read_bytes()
+        for endpoint in ('192.0.2.10:6789', 'localhost:6789', '[::1]:6789', '127.0.0.1:0'):
+            with self.subTest(endpoint=endpoint), self.assertRaises(self.c.InstallError):
+                self.c.configure(self.userdata, dmd_server=endpoint)
+            self.assertEqual(path.read_bytes(), before)
+        self.c.configure(self.userdata, dmd_server='127.0.0.1:6789')
+        sys.path.insert(0, str(PROJECT / 'app'))
+        import configuration
+        self.assertEqual(configuration.settings(self.root)['dmd_server'], '127.0.0.1:6789')
+        self.c.configure(self.userdata, dmd_server='off')
+        self.assertIsNone(configuration.settings(self.root)['dmd_server'])
+
+    def test_dots_only_layout_rejected_before_writes(self):
+        import shutil
+        shutil.rmtree(self.source / 'assets/dmd')
+        (self.source / 'dots').mkdir()
+        (self.source / 'dots/animation.dmd').write_bytes(b'inert asset fixture')
+        with self.assertRaises(self.c.InstallError):
+            self.install()
+        self.assertFalse(self.root.exists())
+
     def test_mapping_cli_requires_source(self):
         from installer.main import main
         from contextlib import redirect_stderr
@@ -278,8 +322,8 @@ class InstallerTests(unittest.TestCase):
         with self.assertRaises(self.c.InstallError):
             self.c.configure(self.userdata, self.root, dmd_server='bad;command')
         self.assertEqual(settings.read_bytes(), original)
-        self.c.configure(self.userdata, self.root, sound=False, dmd_server='localhost:6789')
-        self.assertEqual(json.loads(settings.read_text())['dmd_server'], 'localhost:6789')
+        self.c.configure(self.userdata, self.root, sound=False, dmd_server='127.0.0.1:6789')
+        self.assertEqual(json.loads(settings.read_text())['dmd_server'], '127.0.0.1:6789')
         self.c.configure(self.userdata, self.root, dmd_server='off')
         self.assertIsNone(json.loads(settings.read_text())['dmd_server'])
 

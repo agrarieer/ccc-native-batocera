@@ -152,13 +152,31 @@ def owned_window(process, env):
     return next(iter(query.stdout.split()), None)
 
 
-def focus_windows(player, runtime, env, software):
+def focus_windows(player, runtime, env, software, geometry=None):
     play = owned_window(player, env)
     display = owned_window(runtime, env) if software else None
-    if display:
-        subprocess.run(['xdotool', 'windowraise', display], env=env, check=True, timeout=2)
+    if software and play and display:
+        # Batocera's Openbox rule forces EVERY normal window fullscreen, even
+        # SDL1 NOFRAME and VPX with FullScreen=0/-DisableTrueFullscreen. Raising
+        # the SDL client alone cannot escape that managed fullscreen layer.
+        # Change only our two windows, never Openbox's global configuration.
+        if not shutil.which('wmctrl'):
+            raise RuntimeError('Software DMD stacking requires wmctrl')
+        for window in (play, display):
+            subprocess.run(['wmctrl', '-i', '-r', window, '-b', 'remove,fullscreen'],
+                           env=env, check=True, timeout=2)
+        subprocess.run(['wmctrl', '-i', '-r', display, '-b', 'add,above'],
+                       env=env, check=True, timeout=2)
+        if geometry is not None:
+            x, y, pixel = geometry
+            subprocess.run(['xdotool', 'windowsize', '--sync', display, str(128 * pixel), str(32 * pixel),
+                            'windowmove', display, str(x), str(y)], env=env, check=True, timeout=2)
     if play:
         subprocess.run(['xdotool', 'windowfocus', '--sync', play], env=env, check=True, timeout=2)
+    # Keep keyboard inputs on VPX; the passive DMD's ABOVE state survives later
+    # focus/raise changes without stealing keyboard focus or polling restacks.
+    if display:
+        subprocess.run(['xdotool', 'windowraise', display], env=env, check=True, timeout=2)
     return bool(play and (display or not software))
 
 
@@ -206,7 +224,7 @@ def main(argv=None):
     parser.add_argument('--seconds', type=float, help='Bounded run; default interactive (headless default 8 seconds)')
     parser.add_argument('--mute', action='store_true')
     parser.add_argument('--no-software-dmd', action='store_true')
-    parser.add_argument('--profile', choices=('desktop', 'cabinet'), default='desktop')
+    parser.add_argument('--profile', choices=('desktop', 'cabinet'), default=None)
     args = parser.parse_args(argv)
     if args.seconds is not None and (not 2 <= args.seconds <= 86400):
         parser.error('--seconds must be between 2 and 86400')
@@ -214,6 +232,9 @@ def main(argv=None):
         parser.error('--check and --headless-test are mutually exclusive')
     root = args.root.resolve() if args.root else install_root()
     cfg = settings(root)
+    args.profile = args.profile or cfg.get('profile', 'desktop')
+    if args.profile not in ('desktop', 'cabinet'):
+        parser.error('Configured profile must be desktop or cabinet')
     if args.mute:
         cfg['sound_enabled'] = False
     if args.no_software_dmd:
@@ -297,7 +318,8 @@ def main(argv=None):
             os.replace(temporary, inside(root, 'active-ipc.txt'))
             logs.append(open(run / 'player.log', 'wb'))
             player = subprocess.Popen([str(native), '-PrefPath', str(run / 'prefs') + '/',
-                                       '-Ini', str(run / 'prefs/VPinballX.ini'), '-Play', str(table)],
+                                       '-Ini', str(run / 'prefs/VPinballX.ini'),
+                                       '-DisableTrueFullscreen', '-Play', str(table)],
                                       cwd=run, env=env, stdout=logs[-1], stderr=subprocess.STDOUT, start_new_session=True)
         print('CCC_RUN ' + str(run), flush=True)
         duration = args.seconds if args.seconds is not None else (8 if client else None)
@@ -329,7 +351,7 @@ def main(argv=None):
                 client.heartbeat()
                 last_ping = now
             if player and not focused and now >= focus_at:
-                focused = focus_windows(player, runtime, env, cfg['software_dmd'])
+                focused = focus_windows(player, runtime, env, cfg['software_dmd'], geometry)
                 focus_at = now + .5
             time.sleep(.05)
         if client and runtime.poll() is None:

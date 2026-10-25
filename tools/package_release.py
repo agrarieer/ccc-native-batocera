@@ -10,7 +10,7 @@ import tarfile
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-EXACT = ('README.md', 'ccc.py', 'install.sh', 'docs/INSTALLATION.md',
+EXACT = ('README.md', 'ccc.py', 'install.sh', 'docs/INSTALLATION.md', 'docs/VERIFICATION.md',
          'payload/runtime-downloads.lock.json', 'payload/native-overlay.tar.gz',
          'payload/native-overlay-sources.tar.gz', 'payload/native-overlay-manifest.json',
          'payload/native-overlay-allowlist.json', '.github/workflows/tests.yml')

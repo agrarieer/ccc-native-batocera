@@ -54,11 +54,12 @@ try:
     from procgame.game import GameController
     from procgame.fakepinproc import FakePinPROC
     GameController.create_pinproc=lambda self:FakePinPROC(self.machine_type)
+    # CCC imports ep and ep_lamps imports game: game must own this cycle.
+    import game as game_module
     from ep import EP_Desktop
     from software_dmd import configure_desktop
     geometry=[int(v) for v in os.environ.get('CCC_DMD_GEOMETRY','16,16,5').split(',')]
     configure_desktop(pygame,EP_Desktop,geometry)
-    import game as game_module
     from ccc_wpc_mapping import CCCWPCMapping
     from cabinet_output import Output
     expected_saves=os.path.join(run,'selftest-saves') if os.environ.get('CCC_SELFTEST')=='1' else os.path.join(BASE,'saves')

@@ -240,7 +240,7 @@ def resolve_source(source, shared=None):
                 'config/game_data_template.yaml', 'config/settings_template.yaml',
                 'procgame/__init__.py', 'ep/__init__.py', 'cc_modes/__init__.py']
     missing = [name for name in required if not (source / name).is_file()]
-    for category, choices in [('sound', ('assets/sound', 'sounds')), ('dmd', ('assets/dmd', 'dmd', 'dots'))]:
+    for category, choices in [('sound', ('assets/sound', 'sounds')), ('dmd', ('assets/dmd', 'dmd'))]:
         if not any(any(p.is_file() and p.stat().st_size for p in (source / choice).rglob('*')) for choice in choices):
             missing.append(category + ' assets (empty or missing)')
     if missing:
@@ -372,6 +372,8 @@ def dmd_address(value):
         host = host[1:-1]
     elif host.startswith('.') or host.endswith('.') or '..' in host:
         raise InstallError('Invalid DMD host')
+    if host != '127.0.0.1':
+        raise InstallError('Physical DMD requires explicit compatible local server 127.0.0.1:PORT')
     return host, int(port)
 
 
@@ -442,8 +444,10 @@ def default_table_builder(app, table, script, destination, final_root):
 
 
 def install(*, package, source, table, script, mapping_source=None, userdata='/userdata', root=None, shared=None,
-            dry_run=False, skip_platform_check=False, dmd_server=None, import_saves=None,
+            dry_run=False, skip_platform_check=False, dmd_server=None, import_saves=None, profile=None,
             policy=None, platform_probe=None, table_builder=None, commit_hook=None):
+    if profile is not None and profile not in ('desktop', 'cabinet'):
+        raise InstallError('profile must be desktop or cabinet')
     policy = policy or Policy()
     ud, root, launcher = paths(userdata, root)
     if skip_platform_check and not dry_run:
@@ -542,6 +546,10 @@ def install(*, package, source, table, script, mapping_source=None, userdata='/u
                 settings.update(physical_dmd=bool(address), dmd_host=address[0] if address else '127.0.0.1',
                                 dmd_port=address[1] if address else 6789, dmd_server=dmd_server if address else None)
                 settings_file.write_bytes(json_bytes(settings))
+            if profile is not None:
+                settings = read_json(settings_file)
+                settings['profile'] = profile
+                settings_file.write_bytes(json_bytes(settings))
             ini = stage / 'config/VPX.ini'
             if not ini.exists():
                 ini.write_text('; Native VPX defaults; display is detected by the application.\n', encoding='utf-8')
@@ -613,13 +621,17 @@ def check(userdata='/userdata', root=None):
             'profile': settings.get('profile'), 'note': 'Integrity check; not a live VPX/hardware test.'}
 
 
-def configure(userdata='/userdata', root=None, *, sound=None, dmd_server=None, dry_run=False):
+def configure(userdata='/userdata', root=None, *, sound=None, dmd_server=None, profile=None, dry_run=False):
+    if profile is not None and profile not in ('desktop', 'cabinet'):
+        raise InstallError('profile must be desktop or cabinet')
     _, root, _ = paths(userdata, root)
     owned(root)
     path = root / 'config/settings.json'
     settings = read_json(path)
     if not isinstance(settings, dict):
         raise InstallError('settings.json must contain an object')
+    if profile is not None:
+        settings['profile'] = profile
     if sound is not None:
         if not isinstance(sound, bool):
             raise InstallError('sound must be boolean')
