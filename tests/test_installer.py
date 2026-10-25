@@ -9,6 +9,8 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
+from contextlib import redirect_stdout, redirect_stderr
 
 PROJECT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(PROJECT))
@@ -95,6 +97,145 @@ class InstallerTests(unittest.TestCase):
         import shutil
         shutil.copyfile(table, destination / 'CCC-native.vpx')
         shutil.copyfile(script, destination / 'CCC-native.vbs')
+
+    def test_all_dmd_modes_install_configure_and_update(self):
+        path = self.root / 'config/settings.json'
+        for mode, software, physical in [('software', True, False), ('hardware', False, True), ('both', True, True)]:
+            with self.subTest(mode=mode):
+                self.install(dmd_mode=mode)
+                settings = json.loads(path.read_text())
+                self.assertEqual(settings['dmd_mode'], mode)
+                self.assertEqual(settings['software_dmd'], software)
+                self.assertEqual(settings['physical_dmd'], physical)
+                self.assertEqual(settings['dmd_server'], '127.0.0.1:6789' if physical else None)
+                before = path.read_bytes()
+                self.install()
+                self.assertEqual(path.read_bytes(), before)
+                self.c.configure(self.userdata, dmd_mode=mode, dry_run=True)
+                self.assertEqual(path.read_bytes(), before)
+                self.c.configure(self.userdata, dmd_mode=mode)
+                self.assertEqual(json.loads(path.read_text()), settings)
+
+    def test_dmd_custom_endpoint_and_legacy_off_restore_software(self):
+        self.install(dmd_mode='hardware', dmd_server='127.0.0.1:12345')
+        path = self.root / 'config/settings.json'
+        settings = json.loads(path.read_text())
+        self.assertEqual(settings['dmd_port'], 12345)
+        self.assertFalse(settings['software_dmd'])
+        self.c.configure(self.userdata, dmd_server='off')
+        settings = json.loads(path.read_text())
+        self.assertTrue(settings['software_dmd'])
+        self.assertFalse(settings['physical_dmd'])
+        self.assertIsNone(settings['dmd_server'])
+        self.c.configure(self.userdata, dmd_server='127.0.0.1:12346')
+        settings = json.loads(path.read_text())
+        self.assertTrue(settings['software_dmd'])
+        self.assertTrue(settings['physical_dmd'])
+        self.assertEqual(settings['dmd_port'], 12346)
+
+    def test_invalid_dmd_choices_atomic_for_install_and_configure(self):
+        self.install(dmd_mode='hardware')
+        before = {str(p): p.read_bytes() for p in self.userdata.rglob('*') if p.is_file()}
+        for kwargs in [dict(dmd_mode='invalid'), dict(dmd_mode='software', dmd_server='127.0.0.1:6789'),
+                       dict(dmd_mode='hardware', dmd_server='off'), dict(dmd_mode='both', dmd_server='off'),
+                       dict(dmd_mode='both', dmd_server='localhost:6789')]:
+            for operation in (lambda: self.install(**kwargs), lambda: self.c.configure(self.userdata, **kwargs)):
+                with self.subTest(kwargs=kwargs), self.assertRaises(self.c.InstallError):
+                    operation()
+                self.assertEqual(before, {str(p): p.read_bytes() for p in self.userdata.rglob('*') if p.is_file()})
+        self.assertFalse((self.root.parent / '.ccc-native.install-lock').exists())
+
+    def test_invalid_settings_object_rejected_before_staging(self):
+        self.install()
+        path = self.root / 'config/settings.json'
+        path.write_text('[]')
+        for operation in (lambda: self.install(dmd_mode='hardware'),
+                          lambda: self.c.configure(self.userdata, dmd_mode='both')):
+            with self.assertRaisesRegex(self.c.InstallError, 'object'):
+                operation()
+            self.assertEqual(path.read_text(), '[]')
+            self.assertEqual(list(self.root.parent.glob('.*.stage-*')), [])
+
+    def cli_args(self, command='install'):
+        return [command, '--package', str(self.pkg), '--source', str(self.source), '--table', str(self.table),
+                '--script', str(self.script), '--mapping-source', str(self.script), '--userdata', str(self.userdata)]
+
+    def test_dmd_cli_modes_all_commands(self):
+        from installer.main import main
+        self.install()
+        before = {str(p): p.read_bytes() for p in self.base.rglob('*') if p.is_file()}
+        for mode in ('software', 'hardware', 'both'):
+            for command in ('install', 'check', 'configure'):
+                argv = (['configure', '--userdata', str(self.userdata)] if command == 'configure'
+                        else self.cli_args(command)) + ['--dmd-mode', mode, '--dry-run']
+                with self.subTest(mode=mode, command=command), patch('installer.core.Policy', return_value=self.policy), \
+                        patch('installer.core.probe_platform', self.platform), \
+                        patch('builtins.input', side_effect=AssertionError('must not prompt')), \
+                        patch('installer.core.subprocess.run', side_effect=AssertionError('must not spawn')), \
+                        redirect_stdout(io.StringIO()) as out:
+                    self.assertEqual(main(argv), 0)
+                self.assertEqual(json.loads(out.getvalue())['settings']['dmd_mode'], mode)
+                self.assertEqual(before, {str(p): p.read_bytes() for p in self.base.rglob('*') if p.is_file()})
+
+    def test_legacy_dmd_settings_remain_byte_identical_on_update(self):
+        self.install(dmd_mode='hardware', dmd_server='127.0.0.1:8765')
+        path = self.root / 'config/settings.json'
+        settings = json.loads(path.read_text())
+        del settings['dmd_mode']
+        path.write_text(json.dumps(settings))
+        before = path.read_bytes()
+        self.install()
+        self.assertEqual(path.read_bytes(), before)
+
+    def test_interactive_dmd_choice_real_transaction_fixture(self):
+        from installer.main import main
+        with redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()) as err, \
+                patch('installer.core.Policy', return_value=self.policy), patch('installer.core.probe_platform', self.platform), \
+                patch('installer.core.default_table_builder', self.fixture_table_builder), \
+                patch('sys.stdin.isatty', return_value=True), patch('sys.stdout.isatty', return_value=True), \
+                patch('builtins.input', side_effect=['wrong', '2', 'bad', 'off', '127.0.0.1:4321']) as prompt:
+            self.assertEqual(main(self.cli_args()), 0)
+        settings = json.loads((self.root / 'config/settings.json').read_text())
+        self.assertFalse(settings['software_dmd'])
+        self.assertTrue(settings['physical_dmd'])
+        self.assertEqual(settings['dmd_server'], '127.0.0.1:4321')
+        self.assertEqual(prompt.call_count, 5)
+        self.assertIn('compatible local DMD server', err.getvalue())
+        self.assertIn('does not install, start, stop or change', err.getvalue())
+
+    def test_interactive_default_both_and_cancellation(self):
+        from installer.main import parser, prepare_options
+        for answers, expected in [([''], ('software', None)), (['3', ''], ('both', '127.0.0.1:6789'))]:
+            args = parser().parse_args(self.cli_args())
+            with patch('installer.core.probe_platform', self.platform), patch('sys.stdin.isatty', return_value=True), \
+                    patch('sys.stdout.isatty', return_value=True), patch('builtins.input', side_effect=answers), redirect_stderr(io.StringIO()):
+                self.assertTrue(prepare_options(args))
+            self.assertEqual((args.dmd_mode, args.dmd_server), expected)
+        for answers in ([EOFError()], ['2', EOFError()], [KeyboardInterrupt()]):
+            args = parser().parse_args(self.cli_args())
+            with patch('installer.core.probe_platform', self.platform), patch('sys.stdin.isatty', return_value=True), \
+                    patch('sys.stdout.isatty', return_value=True), patch('builtins.input', side_effect=answers), \
+                    redirect_stderr(io.StringIO()), self.assertRaisesRegex(self.c.InstallError, 'cancelled'):
+                prepare_options(args)
+            self.assertFalse(self.root.exists())
+
+    def test_readonly_explicit_nontty_unsupported_update_never_prompt(self):
+        from installer.main import parser, prepare_options
+        for argv in [self.cli_args('check'), self.cli_args() + ['--check'], self.cli_args() + ['--dry-run'],
+                     self.cli_args() + ['--skip-platform-check'], self.cli_args() + ['--dmd-mode', 'software'],
+                     self.cli_args() + ['--dmd-server', '127.0.0.1:6789'], ['configure']]:
+            with patch('builtins.input', side_effect=AssertionError('must not prompt')), \
+                    patch('sys.stdin.isatty', return_value=True), patch('sys.stdout.isatty', return_value=True):
+                self.assertFalse(prepare_options(parser().parse_args(argv)))
+        for tty, supported in [(False, True), (True, False)]:
+            with patch('builtins.input', side_effect=AssertionError('must not prompt')), \
+                    patch('sys.stdin.isatty', return_value=tty), patch('sys.stdout.isatty', return_value=tty), \
+                    patch('installer.core.probe_platform', return_value={'supported': supported}):
+                self.assertFalse(prepare_options(parser().parse_args(self.cli_args())))
+        self.install(dmd_mode='hardware')
+        with patch('builtins.input', side_effect=AssertionError('must not prompt')), \
+                patch('sys.stdin.isatty', return_value=True), patch('sys.stdout.isatty', return_value=True):
+            self.assertFalse(prepare_options(parser().parse_args(self.cli_args())))
 
     def test_profile_install_configure_update_preserved(self):
         self.install(profile='cabinet')

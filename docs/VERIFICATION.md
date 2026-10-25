@@ -16,6 +16,7 @@ Verified with the fresh native overlay:
 - Coin/start/plunger keyboard requests; a player was created. This does not certify scoring/physics or all game modes.
 - A reviewed bounded run completed 5,485 processing ticks and 1,888 frames. Native game audio initialized through Pulse at 44.1 kHz stereo. Initialization/log checks do not establish audible quality at the physical speakers.
 - VPX and CCC exit status zero, normal F4/protocol-STOP shutdown, zero final outputs, restored prior hotkey context, removed launch lock and active pointer.
+- Hardware-only output was additionally exercised against the existing compatible loopback DMDserver: 274 color frames sent, dense 2x2 source grid verified, server PID unchanged, normal cleanup and original private settings restored. This is transport/sender evidence, not physical-panel visual approval.
 - Persistent cabinet/desktop profile selection, default-save isolation, update preservation and conservative uninstall are also covered by offline regression tests.
 
 The public package does not include the private screenshots, input files, saves, diagnostic logs, assembled dependency runtime or download cache. Source/binary correspondence for the fresh pygame/pinproc overlay is supplied in the code-only source sidecar and allowlist.

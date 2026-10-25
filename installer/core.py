@@ -377,14 +377,37 @@ def dmd_address(value):
     return host, int(port)
 
 
-def settings_default(root, platform_report, dmd_server=None):
+def dmd_settings(settings, dmd_mode=None, dmd_server=None):
+    """Resolve explicit choices; an ordinary update leaves existing policy alone."""
+    if not isinstance(settings, dict):
+        raise InstallError('settings.json must contain an object')
+    if dmd_mode is not None and dmd_mode not in ('software', 'hardware', 'both'):
+        raise InstallError('DMD mode must be software, hardware or both')
     address = dmd_address(dmd_server)
-    return {'schema': 1, 'profile': 'desktop', 'audio': True, 'sound_enabled': True,
-            'audio_backend': 'auto', 'software_dmd': True,
-            'physical_dmd': bool(address), 'dmd_host': address[0] if address else '127.0.0.1',
-            'dmd_port': address[1] if address else 6789, 'volume': 50, 'display': {},
-            'native_vpx': platform_report.get('native_vpx'), 'install_root': str(root),
-            'dmd_server': dmd_server if address else None}
+    if dmd_mode == 'software' and address:
+        raise InstallError('--dmd-mode software conflicts with --dmd-server endpoint')
+    if dmd_mode in ('hardware', 'both') and dmd_server == 'off':
+        raise InstallError('--dmd-mode hardware/both conflicts with --dmd-server off')
+    result = dict(settings)
+    if dmd_mode is None and dmd_server is None:
+        return result
+    # An endpoint without a mode retains the historical software + hardware policy.
+    mode = dmd_mode or ('both' if address else 'software')
+    physical = mode in ('hardware', 'both')
+    endpoint = dmd_server if address else ('127.0.0.1:6789' if physical else None)
+    address = dmd_address(endpoint)
+    result.update(dmd_mode=mode, software_dmd=mode != 'hardware', physical_dmd=physical,
+                  dmd_host=address[0] if address else '127.0.0.1',
+                  dmd_port=address[1] if address else 6789, dmd_server=endpoint)
+    return result
+
+
+def settings_default(root, platform_report, dmd_server=None, dmd_mode=None):
+    settings = {'schema': 1, 'profile': 'desktop', 'audio': True, 'sound_enabled': True,
+                'audio_backend': 'auto', 'volume': 50, 'display': {},
+                'native_vpx': platform_report.get('native_vpx'), 'install_root': str(root)}
+    mode = dmd_mode if dmd_mode is not None else ('both' if dmd_address(dmd_server) else 'software')
+    return dmd_settings(settings, mode, dmd_server)
 
 
 def json_bytes(value):
@@ -444,10 +467,11 @@ def default_table_builder(app, table, script, destination, final_root):
 
 
 def install(*, package, source, table, script, mapping_source=None, userdata='/userdata', root=None, shared=None,
-            dry_run=False, skip_platform_check=False, dmd_server=None, import_saves=None, profile=None,
+            dry_run=False, skip_platform_check=False, dmd_server=None, dmd_mode=None, import_saves=None, profile=None,
             policy=None, platform_probe=None, table_builder=None, commit_hook=None):
     if profile is not None and profile not in ('desktop', 'cabinet'):
         raise InstallError('profile must be desktop or cabinet')
+    dmd_settings({}, dmd_mode, dmd_server)  # Validate before staging or external work.
     policy = policy or Policy()
     ud, root, launcher = paths(userdata, root)
     if skip_platform_check and not dry_run:
@@ -455,7 +479,6 @@ def install(*, package, source, table, script, mapping_source=None, userdata='/u
     report = (platform_probe or probe_platform)()
     if not report.get('supported') and not skip_platform_check:
         raise InstallError('Unsupported platform: ' + report.get('reason', 'unknown'))
-    address = dmd_address(dmd_server)
     package = no_links(package)
     table, script = no_links(table), no_links(script)
     for file, expected, label in [(table, policy.table_sha256, 'VPX table'), (script, policy.script_sha256, 'original VBS script')]:
@@ -478,6 +501,12 @@ def install(*, package, source, table, script, mapping_source=None, userdata='/u
     _, expanded = archive_members(archive, policy)
     record = owned(root) if root.exists() else None
     validate_launcher(launcher, record)
+    settings_path = root / 'config/settings.json'
+    preview_settings = (dmd_settings(read_json(settings_path), dmd_mode, dmd_server)
+                        if record and settings_path.exists()
+                        else settings_default(root, report, dmd_server, dmd_mode))
+    if profile is not None:
+        preview_settings['profile'] = profile
     if import_saves is not None:
         import_saves = no_links(import_saves)
         tree_files(import_saves)
@@ -487,7 +516,7 @@ def install(*, package, source, table, script, mapping_source=None, userdata='/u
               'supported_install': bool(report.get('supported') and not skip_platform_check),
               'warnings': ['Game assets remain user-supplied; no universal hardware compatibility guarantee.'],
               'source': str(source), 'shared': str(shared) if shared else None,
-              'mapping': mapping_manifest}
+              'mapping': mapping_manifest, 'settings': preview_settings}
     if skip_platform_check:
         result['warnings'].append('DEVELOPER CHECK: platform verification skipped; NOT a supported installation.')
     if not shared:
@@ -540,11 +569,9 @@ def install(*, package, source, table, script, mapping_source=None, userdata='/u
                         copy_selected([(p, p.relative_to(original)) for p in tree_files(original)], stage / directory)
             settings_file = stage / 'config/settings.json'
             if not settings_file.exists():
-                settings_file.write_bytes(json_bytes(settings_default(root, report, dmd_server)))
-            elif dmd_server is not None:
-                settings = read_json(settings_file)
-                settings.update(physical_dmd=bool(address), dmd_host=address[0] if address else '127.0.0.1',
-                                dmd_port=address[1] if address else 6789, dmd_server=dmd_server if address else None)
+                settings_file.write_bytes(json_bytes(settings_default(root, report, dmd_server, dmd_mode)))
+            elif dmd_server is not None or dmd_mode is not None:
+                settings = dmd_settings(read_json(settings_file), dmd_mode, dmd_server)
                 settings_file.write_bytes(json_bytes(settings))
             if profile is not None:
                 settings = read_json(settings_file)
@@ -585,7 +612,8 @@ def install(*, package, source, table, script, mapping_source=None, userdata='/u
             atomic_write(launcher, launch_data, 0o755)
             launcher_written = True
             check(ud, root)
-            result.update(status='installed', backup=str(backup) if previous_moved else None)
+            result.update(status='installed', backup=str(backup) if previous_moved else None,
+                          settings=read_json(root / 'config/settings.json'))
             return result
         except BaseException:
             if launcher_written:
@@ -621,15 +649,13 @@ def check(userdata='/userdata', root=None):
             'profile': settings.get('profile'), 'note': 'Integrity check; not a live VPX/hardware test.'}
 
 
-def configure(userdata='/userdata', root=None, *, sound=None, dmd_server=None, profile=None, dry_run=False):
+def configure(userdata='/userdata', root=None, *, sound=None, dmd_server=None, dmd_mode=None, profile=None, dry_run=False):
     if profile is not None and profile not in ('desktop', 'cabinet'):
         raise InstallError('profile must be desktop or cabinet')
     _, root, _ = paths(userdata, root)
     owned(root)
     path = root / 'config/settings.json'
-    settings = read_json(path)
-    if not isinstance(settings, dict):
-        raise InstallError('settings.json must contain an object')
+    settings = dmd_settings(read_json(path), dmd_mode, dmd_server)
     if profile is not None:
         settings['profile'] = profile
     if sound is not None:
@@ -637,10 +663,7 @@ def configure(userdata='/userdata', root=None, *, sound=None, dmd_server=None, p
             raise InstallError('sound must be boolean')
         settings['audio'] = sound
         settings['sound_enabled'] = sound
-    if dmd_server is not None:
-        address = dmd_address(dmd_server)
-        settings.update(physical_dmd=bool(address), dmd_host=address[0] if address else '127.0.0.1',
-                        dmd_port=address[1] if address else 6789, dmd_server=dmd_server if address else None)
+
     if not dry_run:
         with install_lock(root):
             owned(root)

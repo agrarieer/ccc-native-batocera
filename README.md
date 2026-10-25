@@ -42,6 +42,28 @@ A successful installation creates **Ports → Cactus Canyon Continued**. Start w
 
 Supported operations: `install`, `check`, `configure`, `uninstall`. Installation owns only its private `/userdata/system/ccc-native` directory and its exact Ports launcher. Updates preserve saves/configuration and keep a previous-root backup. Uninstall preserves changed/untracked files and personal saves.
 
+## DMD selection
+
+A new interactive terminal installation asks which display to use:
+
+1. **Software DMD** — default, no external display required.
+2. **Hardware DMD** — sends colors to a compatible existing local DMDserver; no software window.
+3. **Both** — software window plus hardware output.
+
+Hardware/both asks for the local endpoint, default `127.0.0.1:6789`. It never installs, replaces or restarts the recipient's DMD service. Only a compatible literal loopback endpoint is accepted; this is not a universal USB/network device installer.
+
+For unattended installs, select explicitly with `--dmd-mode software`, `--dmd-mode hardware` or `--dmd-mode both`. Noninteractive new installs default to software. Ordinary updates preserve the current selection and do not prompt. Check/dry-run does not prompt or download.
+
+Change an installed selection later:
+
+```sh
+sh install.sh configure --dmd-mode software
+sh install.sh configure --dmd-mode hardware --dmd-server 127.0.0.1:6789
+sh install.sh configure --dmd-mode both --dmd-server 127.0.0.1:6789
+```
+
+The physical pixel grid is derived from actual CCC colors at 128x32 and expanded into solid 2x2 blocks on the tested 256x64 server route. Other protocols/resolutions need separate qualification. Physical screen appearance still requires user confirmation.
+
 ## Portrait cabinet view
 
 For an already rotated portrait playfield, persist the cabinet camera without changing global display rotation:
